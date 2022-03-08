@@ -2,6 +2,7 @@ package com.egeperk.projedigieggs.adapter
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.egeperk.projedigieggs.CharactersQuery
 import com.egeperk.projedigieggs.databinding.CharRowBinding
@@ -41,6 +42,6 @@ class CharAdapter(private val characters: List<CharactersQuery.Result>) :
         return characters.size
     }
 
-
 }
+
 

@@ -4,69 +4,78 @@ import android.app.AlertDialog
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
+import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.apollographql.apollo3.api.Optional
-import com.apollographql.apollo3.exception.ApolloException
 import com.egeperk.projedigieggs.*
-import com.egeperk.projedigieggs.adapter.CharAdapter
+import com.egeperk.projedigieggs.adapter.ItemAdapter
 import com.egeperk.projedigieggs.databinding.DialogOptionsBinding
 import com.egeperk.projedigieggs.databinding.FragmentMainBinding
+import com.egeperk.projedigieggs.viewmodel.FeedViewModel
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 
 
+@ExperimentalCoroutinesApi
+@AndroidEntryPoint
 class FeedFragment : Fragment() {
 
+    private lateinit var binding: FragmentMainBinding
+    private val charAdapter by lazy { ItemAdapter() }
+    private val viewModel by viewModels<FeedViewModel>()
+
+
     private var dialogBinding: DialogOptionsBinding? = null
-    private var _binding: FragmentMainBinding? = null
-    private val binding get() = _binding!!
+
+    /* private var _binding: FragmentMainBinding? = null
+     private val binding get() = _binding!!*/
     private lateinit var dialogBuilder: AlertDialog.Builder
     private lateinit var dialog: AlertDialog
     private val TAG = "MainFragment"
     private var characters = mutableListOf<CharactersQuery.Result>()
-    private val adapter = CharAdapter(characters)
+
+    //private val adapter = CharAdapter(characters)
     private val channel = Channel<Unit>(Channel.CONFLATED)
     private var lastAppliedQuery = ""
     private var page: Int? = 0
     var currentQuery = ""
 
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-    }
-
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-        // Inflate the layout for this fragment
-        _binding = FragmentMainBinding.inflate(inflater, container, false)
+    ): View {
+        binding = FragmentMainBinding.inflate(inflater)
         return binding.root
-
-
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
 
 
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
-        binding.recyclerView.adapter = adapter
+        binding.recyclerView.adapter = charAdapter
+        viewModel.queryCharList()
 
 
-        channel.trySend(Unit)
-        adapter.onEndOfListReached = {
-            channel.trySend(Unit)
+        /*
+               binding.recyclerView.adapter = adapter*/
+
+
+        //viewModel.channel.trySend(Unit)
+        charAdapter.onEndOfListReached = {
+            viewModel.queryCharList()
+            //viewModel.channel.trySend(Unit)
         }
 
         super.onViewCreated(view, savedInstanceState)
 
-        getCharacters()
+        //getCharacters()
+
+        observeLiveData()
 
         binding.filterBtn.setOnClickListener(View.OnClickListener {
             createPopup()
@@ -74,7 +83,41 @@ class FeedFragment : Fragment() {
     }
 
 
-    private fun getCharacters() {
+    private fun observeLiveData() {
+        viewModel.charactersList.observe(viewLifecycleOwner) { response ->
+            when (response) {
+                is State.ViewState.Loading -> {
+                    binding.recyclerView.visibility = View.GONE
+                    binding.progressBar.visibility = View.VISIBLE
+                }
+                is State.ViewState.Success -> {
+                    if (response.value?.data?.characters?.results?.size == 0) {
+                        charAdapter.submitList(emptyList())
+                        binding.recyclerView.visibility = View.GONE
+                        binding.progressBar.visibility = View.GONE
+
+                    } else {
+                        binding.progressBar.visibility = View.VISIBLE
+                        binding.recyclerView.visibility = View.VISIBLE
+                    }
+                    val results = response.value?.data?.characters?.results
+                    //val list = charAdapter.currentList + results
+                    results?.let { charAdapter.submitList(charAdapter.currentList.plus(it)) }
+                    //charAdapter.submitList(mutableListOf(list))
+                    binding.progressBar.visibility = View.GONE
+
+                }
+                is State.ViewState.Error -> {
+                    binding.progressBar.visibility = View.GONE
+                    charAdapter.submitList(emptyList())
+                    binding.recyclerView.visibility = View.GONE
+                }
+            }
+        }
+    }
+
+
+/*    private fun getCharacters() {
 
         lifecycleScope.launchWhenResumed {
 
@@ -118,7 +161,7 @@ class FeedFragment : Fragment() {
             adapter.onEndOfListReached = null
             channel.close()
         }
-    }
+    }*/
 
     private fun createPopup() {
 
@@ -174,6 +217,5 @@ class FeedFragment : Fragment() {
 
     override fun onDestroy() {
         super.onDestroy()
-        _binding = null
     }
 }

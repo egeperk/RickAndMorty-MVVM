@@ -2,6 +2,8 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id("com.apollographql.apollo3").version("3.1.0")
+    id 'kotlin-kapt'
+    id("dagger.hilt.android.plugin")
 }
 
 android {
@@ -19,6 +21,8 @@ android {
 
     buildFeatures {
         viewBinding = true
+        dataBinding = true
+
     }
     buildTypes {
         release {
@@ -57,7 +61,17 @@ dependencies {
     //Picasso
     implementation 'com.squareup.picasso:picasso:2.71828'
 
+    //Hilt
+    implementation("com.google.dagger:hilt-android:2.38.1")
+    kapt("com.google.dagger:hilt-android-compiler:2.38.1")
 
+    //Coil
+    implementation("io.coil-kt:coil:2.0.0-rc01")
+
+}
+
+kapt {
+    correctErrorTypes = true
 }
 
 apollo {
